@@ -19,7 +19,7 @@ import outlineRaw from "@assets/img/outline.svg?raw";
   let pageType: string;
 
   const selectors = {
-    shorts: "ytd-reel-video-renderer[is-active] #actions reel-action-bar-view-model",
+    shorts: "ytd-reel-video-renderer reel-action-bar-view-model",
     watch: "#actions #top-level-buttons-computed",
     buttonID: "#holodex-button",
     tooltip: "yt-tooltip",
@@ -75,8 +75,9 @@ import outlineRaw from "@assets/img/outline.svg?raw";
     },
     button: async (target: Element) => {
       const nodes = target.querySelectorAll(selectors.buttonID)
-      for (const node of nodes)
-        node.remove();
+      if (nodes)
+        for (const node of nodes)
+          node.remove();
 
       console.debug("[Holodex+] (re)rendering Holodex button within", target);
       const container = await createButton(target);
@@ -143,7 +144,15 @@ import outlineRaw from "@assets/img/outline.svg?raw";
   }
 
   async function createButton(target: Element) {
-    const container = target.lastChild?.cloneNode(true) as Element;
+    const reference = Array.from(target.querySelectorAll<HTMLElement>("button-view-model")).at(-1);
+    if (!reference) return;
+
+    const parent = reference.parentElement;
+    const hasParentMargin = parent ? parseFloat(window.getComputedStyle(parent).marginLeft) > 0 : false;
+
+    const nodeToClone = hasParentMargin && parent ? parent : reference;
+    const container = nodeToClone.cloneNode(true) as HTMLElement;
+
     container.id = "holodex-button";
     container.removeAttribute("hidden");
     container.addEventListener("click", ytButton_Click);
@@ -156,13 +165,8 @@ import outlineRaw from "@assets/img/outline.svg?raw";
     ytButton.classList.add("yt-watch-holodex-btn");
     ytButton.setAttribute("aria-label", "Open in Holodex");
 
-    let label = ytButton.nextSibling
-    if (!label) {
-      const child = ytButton.firstChild;
-      if (!child) return;
-      label = child.nextSibling;
-      if (!label) return;
-    }
+    const label = ytButton.nextSibling
+    if (label) label.textContent = "Holodex";
 
     const holodexIcon = ytButton.querySelector("svg");
     if (!holodexIcon) return;
