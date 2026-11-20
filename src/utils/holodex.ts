@@ -1,4 +1,4 @@
-import { Tabs } from "webextension-polyfill";
+import { tabs, Tabs } from "webextension-polyfill";
 import { Options } from "@utils";
 
 const HOLODEX_URL_HOME = "https://holodex.net";
@@ -14,14 +14,16 @@ export async function openHolodexUrl(url: string, tab: Tabs.Tab, isMultiview: bo
   const holodexUrl = await getHolodexUrl(url, isMultiview);
   if (!holodexUrl) return;
 
+  const isNewTab = tab.url === "about:newtab" || tab.url === "about:home" || tab.url === "about:blank";
   const currentTabId = tab.id;
-  if (await Options.get("openHolodexInNewTab") && tab.title !== "New Tab")
-    await chrome.tabs.create({ url: holodexUrl, index: tab.index + 1 });
+
+  if (!isNewTab && (holodexUrl === HOLODEX_URL_HOME || await Options.get("openHolodexInNewTab")))
+    await tabs.create({ url: holodexUrl, index: tab.index + 1 });
   else if (currentTabId)
-    await chrome.tabs.update(currentTabId, { url: holodexUrl });
+    await tabs.update(currentTabId, { url: holodexUrl });
   else
     // fallback behavior
-    await chrome.tabs.create({ url: holodexUrl, index: 9999 });
+    await tabs.create({ url: holodexUrl, index: 9999 });
 }
 
 /**
@@ -34,14 +36,22 @@ export async function openHolodexUrl(url: string, tab: Tabs.Tab, isMultiview: bo
  */
 export async function getHolodexUrl(url: string | undefined, isMultiview: boolean) {
   if (url) {
-    /** Do nothing if the given URL is Holodex */
     if (HOLODEX_URL_REGEX.test(url)) {
+      const { pathname } = new URL(url);
+
+      /** Open a new tab to Holodex home when watching a stream or video */
+      if (pathname.startsWith("/watch")) {
+        return HOLODEX_URL_HOME;
+      }
+
+      /** Do nothing on Homepage, Favorites, Multiview, or other Holodex pages */
       return null;
     }
 
     /** Match with given URL */
     const result = matchUrl(url, isMultiview);
-    if (result) return result;
+    if (result)
+      return result;
 
     /** Match with canonical URL */
     const urlObj = new URL(url);
@@ -50,28 +60,31 @@ export async function getHolodexUrl(url: string | undefined, isMultiview: boolea
 
       if (canonicalUrl) {
         const result = matchUrl(canonicalUrl, isMultiview);
-        if (result) return result;
+        if (result)
+          return result;
       }
     }
   }
 
   /** Return Holodex URL after all tests exhausted */
-  if (isMultiview) return HOLODEX_URL_HOME.concat(`/multiview`);
-  return HOLODEX_URL_HOME;
+  return HOLODEX_URL_HOME.concat(isMultiview ? `/multiview` : ``);
 }
 
 /** Attempt to match given URL */
 function matchUrl(testUrl: string, isMultiview: boolean): string | undefined {
   const videoMatch = testUrl.match(VIDEO_URL_REGEX);
   if (videoMatch) {
-    if (isMultiview) return HOLODEX_URL_HOME.concat(`/multiview/AAUY${ videoMatch[0] }%2CUAEYchat`);
-    return HOLODEX_URL_HOME.concat(`/watch/${ videoMatch[0] }`);
+
+    return isMultiview
+      ? HOLODEX_URL_HOME.concat(`/multiview/AAUY${ videoMatch[0] }%2CUAEYchat`)
+      : HOLODEX_URL_HOME.concat(`/watch/${ videoMatch[0] }`);
   }
 
   const channelMatch = testUrl.match(CHANNEL_URL_REGEX);
   if (channelMatch) {
-    if (isMultiview) return HOLODEX_URL_HOME.concat(`/multiview`)
-    return HOLODEX_URL_HOME.concat(`/channel/${ channelMatch[0] }`);
+    return isMultiview
+      ? HOLODEX_URL_HOME.concat(`/multiview`)
+      : HOLODEX_URL_HOME.concat(`/channel/${ channelMatch[0] }`);
   }
 }
 
