@@ -3,23 +3,18 @@ import { runtime } from "webextension-polyfill";
 import logoRaw from "@assets/img/logo.svg?raw";
 import outlineRaw from "@assets/img/outline.svg?raw";
 
-// Holodex button injected into YouTube pages
+// Injects an "Open in Holodex" button into YouTube Watch and Shorts pages
 (async () => {
-  if (!(await Options.get("holodexButtonInYoutube"))) return;
   console.log("[Holodex+] yt-watch script loaded");
 
+  // --- Constants, Assets & Selectors ---
   const logo = loadSVGElement(logoRaw);
   const outline = loadSVGElement(outlineRaw);
 
+  // Nudge icon horizontally to visually center inside YouTube's circular button container
   [logo, outline].forEach((element) => {
     element.style.transform = "translateX(1.2px)";
   });
-
-  let pageUrl = "";
-  let pageType = "";
-  let rafId: number | undefined;
-  let tooltipTimer: ReturnType<typeof setTimeout> | undefined;
-  let isInjecting = false;
 
   const selectors = {
     shorts: "ytd-reel-video-renderer reel-action-bar-view-model",
@@ -31,88 +26,15 @@ import outlineRaw from "@assets/img/outline.svg?raw";
     holodexButton: () => `${selectors.actionBar()} ${selectors.buttonID}`,
   };
 
-  const render = {
-    tooltip: async (target: Element | null) => {
-      if (!target) return;
-      if (document.querySelectorAll(selectors.tooltipID).length === 1) return;
+  // --- Mutable State ---
+  let isEnabled = Boolean(await Options.get("holodexButtonInYoutube"));
+  let pageUrl = "";
+  let pageType = "";
+  let rafId: number | undefined;
+  let tooltipTimer: ReturnType<typeof setTimeout> | undefined;
+  let isInjecting = false;
 
-      console.debug("[Holodex+] (re)rendering Holodex tooltip within", target);
-      const cloneTooltip = target.firstChild?.cloneNode(true) as HTMLElement | undefined;
-      if (!cloneTooltip) return;
-
-      cloneTooltip.id = "holodex-tooltip";
-      target.appendChild(cloneTooltip);
-
-      console.debug("[Holodex+] Holodex tooltip rendered:", target.querySelector(selectors.tooltipID));
-    },
-
-    button: async (target: Element | null) => {
-      if (!target) return;
-      target.querySelectorAll(selectors.buttonID).forEach((node) => node.remove());
-
-      console.debug("[Holodex+] (re)rendering Holodex button within", target);
-      const container = await createButton(target);
-      if (!container) return;
-
-      if (pageType === "shorts") {
-        target.insertBefore(container, target.firstChild);
-      } else {
-        target.querySelector("yt-button-view-model")?.after(container);
-      }
-
-      console.debug("[Holodex+] Holodex button rendered:", target.querySelector(selectors.buttonID));
-    },
-  };
-
-  function syncPageContext() {
-    pageUrl = window.location.href;
-    if (window.location.pathname.startsWith("/shorts/")) {
-      pageType = "shorts";
-    } else if (window.location.pathname.startsWith("/watch")) {
-      pageType = "watch";
-    } else {
-      pageType = "";
-    }
-  }
-
-  async function checkAndInject() {
-    if (isInjecting) return;
-    syncPageContext();
-    if (pageType !== "shorts" && pageType !== "watch") return;
-
-    const ytdApp = document.querySelector("ytd-app");
-    if (!ytdApp) return;
-
-    isInjecting = true;
-    try {
-      await render.tooltip(ytdApp.querySelector(selectors.tooltip));
-
-      if (ytdApp.querySelector(selectors.holodexButton())) return;
-
-      const candidates = Array.from(ytdApp.querySelectorAll(selectors.actionBar()));
-      const target = candidates.find((el) => el.querySelector("button-view-model"));
-      if (!target) return;
-
-      await render.button(target);
-    } finally {
-      isInjecting = false;
-    }
-  }
-
-  // Always attach listeners unconditionally at the top level
-  document.addEventListener("yt-navigate-finish", checkAndInject);
-  await checkAndInject();
-
-  const observer = new MutationObserver(() => {
-    if (rafId !== undefined) return;
-    rafId = requestAnimationFrame(async () => {
-      rafId = undefined;
-      await checkAndInject();
-    });
-  });
-
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-
+  // --- Button Interaction Handlers ---
   function ytButton_Click() {
     syncPageContext();
     const response = runtime.sendMessage({
@@ -136,6 +58,7 @@ import outlineRaw from "@assets/img/outline.svg?raw";
     const ytButton = container?.querySelector("button");
     if (!ytButton) return;
 
+    // Position custom popover centered below the button using YouTube's native tooltip classes
     const rect = ytButton.getBoundingClientRect();
     const leftSide = rect.x + (rect.width - 60) / 2 + window.scrollX;
     const topSide = rect.y + rect.height + 16 + window.scrollY;
@@ -176,10 +99,12 @@ import outlineRaw from "@assets/img/outline.svg?raw";
     }, 50);
   }
 
+  // --- DOM Builders & Renderers ---
   async function createButton(target: Element) {
     const reference = Array.from(target.querySelectorAll<HTMLElement>("button-view-model")).at(-1);
     if (!reference) return;
 
+    // Preserve spacing when YouTube wraps action buttons in a spaced parent container
     const parent = reference.parentElement;
     const hasParentMargin = parent ? parseFloat(window.getComputedStyle(parent).marginLeft) > 0 : false;
 
@@ -208,4 +133,117 @@ import outlineRaw from "@assets/img/outline.svg?raw";
 
     return container;
   }
+
+  const render = {
+    tooltip: async (target: Element | null) => {
+      if (!target) return;
+      if (document.querySelectorAll(selectors.tooltipID).length === 1) return;
+
+      console.debug("[Holodex+] (re)rendering Holodex tooltip within", target);
+      const cloneTooltip = target.firstChild?.cloneNode(true) as HTMLElement | undefined;
+      if (!cloneTooltip) return;
+
+      cloneTooltip.id = "holodex-tooltip";
+      target.appendChild(cloneTooltip);
+
+      console.debug("[Holodex+] Holodex tooltip rendered:", target.querySelector(selectors.tooltipID));
+    },
+
+    button: async (target: Element | null) => {
+      if (!target) return;
+      target.querySelectorAll(selectors.buttonID).forEach((node) => node.remove());
+
+      console.debug("[Holodex+] (re)rendering Holodex button within", target);
+      const container = await createButton(target);
+      if (!container) return;
+
+      if (pageType === "shorts") {
+        target.insertBefore(container, target.firstChild);
+      } else {
+        target.querySelector("yt-button-view-model")?.after(container);
+      }
+
+      console.debug("[Holodex+] Holodex button rendered:", target.querySelector(selectors.buttonID));
+    },
+  };
+
+  // --- Injection & Lifecycle Management ---
+  function syncPageContext() {
+    pageUrl = window.location.href;
+    if (window.location.pathname.startsWith("/shorts/")) {
+      pageType = "shorts";
+    } else if (window.location.pathname.startsWith("/watch")) {
+      pageType = "watch";
+    } else {
+      pageType = "";
+    }
+  }
+
+  async function checkAndInject() {
+    if (!isEnabled || isInjecting) return;
+
+    syncPageContext();
+    if (pageType !== "shorts" && pageType !== "watch") return;
+
+    const ytdApp = document.querySelector("ytd-app");
+    if (!ytdApp) return;
+
+    isInjecting = true;
+    try {
+      await render.tooltip(ytdApp.querySelector(selectors.tooltip));
+
+      if (ytdApp.querySelector(selectors.holodexButton())) return;
+
+      const candidates = Array.from(ytdApp.querySelectorAll(selectors.actionBar()));
+      const target = candidates.find((el) => el.querySelector("button-view-model"));
+      if (!target) return;
+
+      await render.button(target);
+    } finally {
+      isInjecting = false;
+    }
+  }
+
+  // Throttle DOM mutation checks to one per animation frame
+  const observer = new MutationObserver(() => {
+    if (!isEnabled || rafId !== undefined) return;
+    rafId = requestAnimationFrame(async () => {
+      rafId = undefined;
+      await checkAndInject();
+    });
+  });
+
+  function startObserving() {
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    checkAndInject();
+  }
+
+  function cleanup() {
+    clearTimeout(tooltipTimer);
+    if (rafId !== undefined) {
+      cancelAnimationFrame(rafId);
+      rafId = undefined;
+    }
+    // Disconnect before removing nodes so the observer doesn't immediately re-inject them
+    observer.disconnect();
+    document.querySelectorAll(selectors.buttonID).forEach((node) => node.remove());
+    document.querySelectorAll(selectors.tooltipID).forEach((node) => node.remove());
+  }
+
+  // --- Initialization & Event Listeners ---
+  document.addEventListener("yt-navigate-finish", checkAndInject);
+
+  if (isEnabled) {
+    startObserving();
+  }
+
+  Options.onChange("holodexButtonInYoutube", (newValue) => {
+    isEnabled = Boolean(newValue);
+
+    if (isEnabled) {
+      startObserving();
+    } else {
+      cleanup();
+    }
+  });
 })();

@@ -1,4 +1,4 @@
-import { openHolodexUrl } from "@utils";
+import { Options, openHolodexUrl } from "@utils";
 import {
   action,
   contextMenus,
@@ -10,6 +10,52 @@ import {
 console.log("[Holodex+] background script loaded");
 
 runtime.onInstalled.addListener(() => {
+// --- Context Menu Management ---
+async function syncContextMenus(enabled: boolean) {
+  // Always clear existing items first to avoid duplicate ID errors on re-enable
+  await contextMenus.removeAll();
+  if (!enabled) return;
+
+  const ytVideoPages = [
+    "https://*.youtube.com/feed/*",
+    "https://*.youtube.com/watch?*",
+    "https://*.youtube.com/shorts/*",
+  ];
+
+  const ytChannelPages = [
+    "https://*.youtube.com/channel*",
+    "https://*.youtube.com/@*",
+  ];
+
+  contextMenus.create({
+    id: "openLinkHolodex",
+    title: "Open in Holodex",
+    contexts: [ "link" ],
+    targetUrlPatterns: [ ...ytVideoPages, ...ytChannelPages ],
+  });
+
+  contextMenus.create({
+    id: "openLinkMultiview",
+    contexts: [ "link" ],
+    targetUrlPatterns: ytVideoPages,
+  });
+
+  contextMenus.create({
+    id: "openPageHolodex",
+    title: "Open in Holodex",
+    contexts: [ "page" ],
+    documentUrlPatterns: [ ...ytVideoPages, ...ytChannelPages ],
+  });
+
+  contextMenus.create({
+    id: "openPageMultiview",
+    contexts: [ "page" ],
+    documentUrlPatterns: ytVideoPages,
+  });
+}
+
+// --- Initialization & Option Listeners ---
+runtime.onInstalled.addListener(async () => {
   // Define the rule to remove the "X-Frame-Options" header
   const rules = [
     {
@@ -54,50 +100,22 @@ runtime.onInstalled.addListener(() => {
     removeRuleIds: [ 1, 2 ],
     addRules: rules,
   });
+
+  const isContextMenuEnabled = await Options.get("openInHolodexContextMenu");
+  await syncContextMenus(isContextMenuEnabled);
 });
 
-runtime.onInstalled.addListener(() => {
-  const ytVideoPages = [
-    "https://*.youtube.com/feed/*",
-    "https://*.youtube.com/watch?*",
-    "https://*.youtube.com/shorts/*",
-  ];
-
-  const ytChannelPages = [
-    "https://*.youtube.com/channel*",
-    "https://*.youtube.com/@*",
-  ];
-
-  contextMenus.create({
-    id: "openLinkHolodex",
-    title: "Open in Holodex",
-    contexts: [ "link" ],
-    targetUrlPatterns: [ ...ytVideoPages, ...ytChannelPages ],
-  });
-
-  contextMenus.create({
-    id: "openLinkMultiview",
-    title: "Open in Multiview",
-    contexts: [ "link" ],
-    targetUrlPatterns: ytVideoPages,
-  });
-
-  contextMenus.create({
-    id: "openPageHolodex",
-    title: "Open in Holodex",
-    contexts: [ "page" ],
-    documentUrlPatterns: [ ...ytVideoPages, ...ytChannelPages ],
-  });
-
-  contextMenus.create({
-    id: "openPageMultiview",
-    title: "Open in Multiview",
-    contexts: [ "page" ],
-    documentUrlPatterns: ytVideoPages,
-  });
-
+runtime.onStartup.addListener(async () => {
+  const isContextMenuEnabled = await Options.get("openInHolodexContextMenu");
+  await syncContextMenus(isContextMenuEnabled);
 });
 
+// React immediately when the user toggles the checkbox in Options
+Options.onChange("openInHolodexContextMenu", (newValue) => {
+  syncContextMenus(Boolean(newValue));
+});
+
+// --- Action, Context Menu & Message Handlers ---
 contextMenus.onClicked.addListener(async (info, tab) => {
   if (!(tab && tab.url)) return;
   const linkUrl = info.linkUrl || tab.url;
