@@ -9,7 +9,6 @@ import {
 
 console.log("[Holodex+] background script loaded");
 
-runtime.onInstalled.addListener(() => {
 // --- Context Menu Management ---
 async function syncContextMenus(enabled: boolean) {
   // Always clear existing items first to avoid duplicate ID errors on re-enable
@@ -36,6 +35,7 @@ async function syncContextMenus(enabled: boolean) {
 
   contextMenus.create({
     id: "openLinkMultiview",
+    title: "Open in &Multiview",
     contexts: [ "link" ],
     targetUrlPatterns: ytVideoPages,
   });
@@ -49,6 +49,7 @@ async function syncContextMenus(enabled: boolean) {
 
   contextMenus.create({
     id: "openPageMultiview",
+    title: "Open in &Multiview",
     contexts: [ "page" ],
     documentUrlPatterns: ytVideoPages,
   });

@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   for (const [ option, defaultValue ] of entries(Options.schema())) {
     const container = document.createElement("div");
     container.className =
-      "items-center justify-between p-4 rounded-lg bg-gray-800 hover:bg-gray-750 transition-colors";
+      "p-4 rounded-lg bg-gray-800 hover:bg-gray-750 transition-colors";
 
     // Heading section
     const heading = document.createElement("h2");
@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Label section
     const labelSection = document.createElement("div");
-    labelSection.className = "flex items-center space-x-2";
+    labelSection.className = "flex items-center justify-between gap-4";
 
     const text = document.createElement("span");
     text.className = "text-gray-200";
@@ -66,13 +66,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Toggle switch
     const switchContainer = document.createElement("label");
     switchContainer.className =
-      "relative inline-flex items-center cursor-pointer";
+      "relative inline-flex items-center cursor-pointer shrink-0";
 
     const input = document.createElement("input");
     input.type = "checkbox";
     input.className = "sr-only peer";
     input.checked = (await Options.get(option)) ?? defaultValue;
     input.addEventListener("change", () => Options.set(option, input.checked));
+    Options.onChange(option, (newValue) => {
+      input.checked = Boolean(newValue);
+    });
 
     const slider = document.createElement("div");
     slider.className = `
