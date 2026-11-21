@@ -4,9 +4,9 @@ import { storage } from "webextension-polyfill";
 const schema = {
   // key: default-value
   remoteYoutubeLikeButton: true,
-  holodexButtonInYoutube: true,
   openHolodexInNewTab: true,
-  // openInHolodexContextMenu: false,
+  holodexButtonInYoutube: true,
+  openInHolodexContextMenu: true,
 };
 type Schema = typeof schema;
 const descriptions: Partial<Record<keyof Schema, { name: string, description: string }>> = {
@@ -15,39 +15,38 @@ const descriptions: Partial<Record<keyof Schema, { name: string, description: st
     description: "Add a 'Like on YouTube' button to Holodex videos - clicking it will open YouTube in a new tab",
   },
   holodexButtonInYoutube: {
-    name: "Holodex Button on YouTube",
-    description: "Add a 'View in Holodex' button below YouTube videos for quick access to Holodex features",
+    name: "Holodex Button in YouTube",
+    description: "Add a Holodex button in the YouTube watch and shorts page.",
   },
   openHolodexInNewTab: {
     name: "Open in New Tab",
     description: "When clicking the extension icon, open Holodex in a new tab instead of the current one",
   },
-  // openInHolodexContextMenu: {
-  //   name: "Holodex Context Menu",
-  //   description: "Add 'Open in Holodex' to the right-click menu for video links",
-  // },
+  openInHolodexContextMenu: {
+    name: "Context Menu Options",
+    description: "Add 'Open in Holodex' and 'Open in Multiview' options to the context menu on YouTube pages.",
+  },
 };
 
 export const Options = {
-  /** Get the options storage schema */
-  schema(): Schema {
-    return { ...schema };
-  },
-
-  /** Get an option's description */
-  name<K extends keyof Schema>(key: K): string | null {
+  /** Get an option's name */
+  name(key: keyof Schema): string | null {
     return descriptions[key]?.name ?? null;
   },
 
   /** Get an option's description */
-  description<K extends keyof Schema>(key: K): string | null {
+  description(key: keyof Schema): string | null {
     return descriptions[key]?.description ?? null;
   },
 
   /** Get an option */
-  async get<K extends keyof Schema>(key: K): Promise<Schema[K] | null> {
+  async get<K extends keyof Schema>(key: K): Promise<Schema[K]> {
     const result = await storage.local.get(key);
-    return key in result ? result[key] : schema[key];
+    if (result[key] === undefined) {
+      console.warn(`Option "${key}" not found in storage, returning default value.`);
+      return schema[key];
+    }
+    return result[key] as Schema[K];
   },
 
   /** Set an option */
@@ -55,15 +54,23 @@ export const Options = {
     await storage.local.set({ [key]: value });
   },
 
-  // This probably shouldn't be used as it is, because it doesn't listen for changes
-  // in *just* the options storage.
-  /**
-   * Listen for changes in the options storage
-   */
-  /* subscribe(callback: (changes: { [K in keyof Schema]?: browser.Storage.StorageChange }) => void) {
-    storage.onChanged.addListener((changes, type) => {
-      if (type !== "local") return;
-      callback(changes);
-    });
-  }, */
+  /** Get the options storage schema */
+  schema(): Schema {
+    return { ...schema };
+  },
+
+  /** Listen for changes to a specific option */
+  onChange<K extends keyof Schema>(key: K, callback: (newValue: Schema[K], oldValue?: Schema[K]) => void): () => void {
+    type OnChangedListener = Parameters<typeof storage.onChanged.addListener>[0];
+
+    const listener: OnChangedListener = (changes, areaName) => {
+      if (areaName !== "local" || !(key in changes)) return;
+      const newValue = (changes[key].newValue ?? schema[key]) as Schema[K];
+      const oldValue = changes[key].oldValue as Schema[K] | undefined;
+      callback(newValue, oldValue);
+    };
+
+    storage.onChanged.addListener(listener);
+    return () => storage.onChanged.removeListener(listener);
+  },
 } as const;
