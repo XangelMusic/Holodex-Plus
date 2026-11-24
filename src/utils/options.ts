@@ -12,7 +12,7 @@ type Schema = typeof schema;
 const descriptions: Partial<Record<keyof Schema, { name: string, description: string }>> = {
   remoteYoutubeLikeButton: {
     name: "Like Button on Holodex",
-    description: "Add a 'Like on YouTube' button to Holodex videos - clicking it will open YouTube in a new tab",
+    description: "Add a 'Like on YouTube' button to Holodex videos - clicking it will open YouTube in a new tab.",
   },
   holodexButtonInYoutube: {
     name: "Holodex Button in YouTube",
@@ -20,7 +20,7 @@ const descriptions: Partial<Record<keyof Schema, { name: string, description: st
   },
   openHolodexInNewTab: {
     name: "Open in New Tab",
-    description: "When clicking the extension icon, open Holodex in a new tab instead of the current one",
+    description: "When clicking the extension icon, open Holodex in a new tab instead of the current one.",
   },
   openInHolodexContextMenu: {
     name: "Context Menu Options",
