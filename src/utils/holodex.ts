@@ -10,20 +10,20 @@ const VIDEO_URL_REGEX = /(?<=[=\/?&#])[A-Za-z0-9\-_]{11}(?=[=\/?&#]|$)/;
 const CANONICAL_URL_REGEX =
   /\/(?:channel\/[A-Za-z0-9\-_]{24}|(?:shorts\/|watch\?v=)[A-Za-z0-9\-_]{11})\b/;
 
-export async function openHolodexUrl(url: string, tab: Tabs.Tab, isMultiview: boolean = false) {
+export async function openHolodexUrl(url: string, tab?: Tabs.Tab, isMultiview: boolean = false) {
   const holodexUrl = await getHolodexUrl(url, isMultiview);
   if (!holodexUrl) return;
 
-  const isNewTab = tab.url === "about:newtab" || tab.url === "about:home" || tab.url === "about:blank";
-  const currentTabId = tab.id;
+  const isNewTab = tab?.url === "about:newtab" || tab?.url === "about:home" || tab?.url === "about:blank";
+  const currentTabId = tab?.id;
 
-  if (!isNewTab && (holodexUrl === HOLODEX_URL_HOME || await Options.get("openHolodexInNewTab")))
+  if (tab && !isNewTab && (holodexUrl === HOLODEX_URL_HOME || await Options.get("openHolodexInNewTab")))
     await tabs.create({ url: holodexUrl, index: tab.index + 1 });
   else if (currentTabId)
     await tabs.update(currentTabId, { url: holodexUrl });
   else
     // fallback behavior
-    await tabs.create({ url: holodexUrl, index: 9999 });
+    await tabs.create({ url: holodexUrl });
 }
 
 /**

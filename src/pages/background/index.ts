@@ -118,17 +118,15 @@ Options.onChange("openInHolodexContextMenu", (newValue) => {
 
 // --- Action, Context Menu & Message Handlers ---
 contextMenus.onClicked.addListener(async (info, tab) => {
-  if (!(tab && tab.url)) return;
-  const linkUrl = info.linkUrl || tab.url;
-  let isMultiview = false;
+  const linkUrl = info.linkUrl || tab?.url;
+  if (!linkUrl) return;
 
-  const menuItem = info.menuItemId as string;
-
-  if (menuItem.includes("Multiview"))
-    isMultiview = true;
+  const menuItem = String(info.menuItemId);
+  const isMultiview = menuItem.includes("Multiview");
 
   await openHolodexUrl(linkUrl, tab, isMultiview);
 });
+
 
 action.onClicked.addListener(async (tab) => {
   if (!tab.id || !tab.url) return;
