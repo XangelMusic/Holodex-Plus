@@ -102,17 +102,17 @@ runtime.onInstalled.addListener(async () => {
     addRules: rules,
   });
 
-  const isContextMenuEnabled = await Options.get("openInHolodexContextMenu");
+  const isContextMenuEnabled = await Options.get("holodexInContextMenu");
   await syncContextMenus(isContextMenuEnabled);
 });
 
 runtime.onStartup.addListener(async () => {
-  const isContextMenuEnabled = await Options.get("openInHolodexContextMenu");
+  const isContextMenuEnabled = await Options.get("holodexInContextMenu");
   await syncContextMenus(isContextMenuEnabled);
 });
 
 // React immediately when the user toggles the checkbox in Options
-Options.onChange("openInHolodexContextMenu", (newValue) => {
+Options.onChange("holodexInContextMenu", (newValue) => {
   syncContextMenus(Boolean(newValue));
 });
 

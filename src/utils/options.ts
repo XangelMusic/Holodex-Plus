@@ -6,7 +6,7 @@ const schema = {
   remoteYoutubeLikeButton: true,
   openHolodexInNewTab: true,
   holodexButtonInYoutube: true,
-  openInHolodexContextMenu: true,
+  holodexInContextMenu: true,
 };
 type Schema = typeof schema;
 const descriptions: Partial<Record<keyof Schema, { name: string, description: string }>> = {
@@ -14,16 +14,16 @@ const descriptions: Partial<Record<keyof Schema, { name: string, description: st
     name: "Like Button on Holodex",
     description: "Add a 'Like on YouTube' button to Holodex videos - clicking it will open YouTube in a new tab.",
   },
-  holodexButtonInYoutube: {
-    name: "Holodex Button in YouTube",
-    description: "Add a Holodex button in the YouTube watch and shorts page.",
-  },
   openHolodexInNewTab: {
     name: "Open in New Tab",
     description: "When clicking the extension icon, open Holodex in a new tab instead of the current one.",
   },
-  openInHolodexContextMenu: {
-    name: "Context Menu Options",
+  holodexButtonInYoutube: {
+    name: "Holodex Button on YouTube",
+    description: "Add a Holodex button in the YouTube watch and shorts page.",
+  },
+  holodexInContextMenu: {
+    name: "Holodex in Context Menu",
     description: "Add 'Open in Holodex' and 'Open in Multiview' options to the context menu on YouTube pages.",
   },
 };
