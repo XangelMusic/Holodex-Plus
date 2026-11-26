@@ -13,19 +13,13 @@ const manifest = {
     service_worker: "src/pages/background/index.ts",
     type: "module",
   },
-  action: {
-    // default_popup: "src/pages/popup/index.html",
-    default_icon: {
-      "16": "src/icons/16.png",
-      "32": "src/icons/32.png",
-      "48": "src/icons/48.png",
-      "64": "src/icons/64.png",
-      "128": "src/icons/128.png",
-    },
-  },
+  action: {},
   icons: {
-    "128": "src/icons/128.png",
     "16": "src/icons/16.png",
+    "32": "src/icons/32.png",
+    "48": "src/icons/48.png",
+    "64": "src/icons/64.png",
+    "128": "src/icons/128.png",
   },
   permissions: [
     "tabs",
